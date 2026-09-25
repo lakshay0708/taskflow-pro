@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 taskflow.db
+.env
+.env.*
+!.env.example
