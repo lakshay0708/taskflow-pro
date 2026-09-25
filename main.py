@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import ai_suggest
 from database import COLUMNS, db, init_db
 from engine import critical_path, recalculate
 from graph import creates_cycle
@@ -34,6 +35,10 @@ class DependencyIn(BaseModel):
 
 class DurationIn(BaseModel):
     duration_days: int
+
+
+class SuggestIn(BaseModel):
+    task_id: int
 
 
 def read_board(conn):
@@ -364,6 +369,166 @@ def change_duration(task_id: int, payload: DurationIn):
         recalculate(conn)
 
         return {"board": read_board(conn)}
+
+
+def ground_suggestions(
+    raw,
+    tasks,
+    task_ids,
+    edges,
+    new_task_id,
+):
+    grounded = []
+    seen = set()
+    existing = set(edges)
+
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+
+        candidate_id = item.get("id")
+
+        if (
+            isinstance(candidate_id, str)
+            and candidate_id.strip().isdigit()
+        ):
+            candidate_id = int(candidate_id.strip())
+
+        if not isinstance(candidate_id, int):
+            continue
+
+        if candidate_id in seen:
+            continue
+
+        if candidate_id == new_task_id:
+            continue
+
+        if candidate_id not in tasks:
+            continue
+
+        if (new_task_id, candidate_id) in existing:
+            continue
+
+        if creates_cycle(
+            task_ids,
+            edges,
+            (new_task_id, candidate_id),
+        ):
+            continue
+
+        reason = item.get("reason")
+
+        if not isinstance(reason, str):
+            reason = ""
+
+        seen.add(candidate_id)
+
+        grounded.append(
+            {
+                "id": candidate_id,
+                "title": tasks[candidate_id]["title"],
+                "reason": reason.strip()[:120],
+            }
+        )
+
+        if len(grounded) >= ai_suggest.MAX_SUGGESTIONS:
+            break
+
+    return grounded
+
+
+@app.post("/api/suggestions")
+def suggest_prerequisites(payload: SuggestIn):
+    with db() as conn:
+        tasks = {
+            row["id"]: dict(row)
+            for row in conn.execute(
+                "SELECT * FROM tasks"
+            )
+        }
+
+        task_ids, edges = load_ids_and_edges(conn)
+
+        if payload.task_id not in tasks:
+            raise HTTPException(
+                status_code=404,
+                detail="That task does not exist.",
+            )
+
+        new_task = tasks[payload.task_id]
+        already_linked = set(edges)
+
+        candidates = [
+            task
+            for task in tasks.values()
+            if (
+                task["id"] != payload.task_id
+                and (
+                    payload.task_id,
+                    task["id"],
+                ) not in already_linked
+            )
+        ]
+
+        if not candidates:
+            return {
+                "source": "none",
+                "requires_approval": True,
+                "suggestions": [],
+            }
+
+        source = "keyword"
+        raw = []
+
+        reply = ai_suggest.call_llm(
+            ai_suggest.build_prompt(
+                new_task,
+                candidates,
+            )
+        )
+
+        if reply:
+            parsed = ai_suggest.extract_json(reply)
+
+            if (
+                isinstance(parsed, dict)
+                and isinstance(
+                    parsed.get("suggestions"),
+                    list,
+                )
+            ):
+                raw = parsed["suggestions"]
+                source = "llm"
+
+        grounded = ground_suggestions(
+            raw,
+            tasks,
+            task_ids,
+            edges,
+            payload.task_id,
+        )
+
+        if not grounded:
+            raw = ai_suggest.keyword_suggestions(
+                new_task,
+                candidates,
+            )
+
+            grounded = ground_suggestions(
+                raw,
+                tasks,
+                task_ids,
+                edges,
+                payload.task_id,
+            )
+
+            source = "keyword"
+
+        return {
+            "source": source,
+            "requires_approval": True,
+            "suggestions": grounded,
+        }
 
 
 STATIC_DIR = Path(__file__).parent / "static"
