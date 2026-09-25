@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TaskFlow Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="masthead">
+        <h1>TaskFlow Pro</h1>
+        <p class="status-line" id="status-line">Loading the board.</p>
+    </header>
+
+    <p class="message" id="message" hidden></p>
+
+    <section class="controls">
+        <div class="panel">
+            <h2>Add a task</h2>
+
+            <div class="field">
+                <label for="task-title">Title</label>
+                <input
+                    id="task-title"
+                    type="text"
+                    placeholder="Set up staging server"
+                >
+            </div>
+
+            <div class="field">
+                <label for="task-description">Notes</label>
+                <input
+                    id="task-description"
+                    type="text"
+                    placeholder="Optional"
+                >
+            </div>
+
+            <div class="field-row">
+                <div class="field">
+                    <label for="task-start">Starts</label>
+                    <input id="task-start" type="date">
+                </div>
+
+                <div class="field">
+                    <label for="task-days">Days</label>
+                    <input
+                        id="task-days"
+                        type="number"
+                        min="1"
+                        value="2"
+                    >
+                </div>
+            </div>
+
+            <button id="create-task" type="button">Add task</button>
+
+            <p class="hint">
+                After adding, TaskFlow suggests prerequisites for you to approve.
+            </p>
+        </div>
+
+        <div class="panel">
+            <h2>Link two tasks</h2>
+
+            <div class="field">
+                <label for="dep-task">This task</label>
+                <select id="dep-task"></select>
+            </div>
+
+            <div class="field">
+                <label for="dep-prereq">cannot start until</label>
+                <select id="dep-prereq"></select>
+            </div>
+
+            <button id="create-dep" type="button">Link tasks</button>
+
+            <p class="hint">
+                A link that would loop back on itself is refused.
+            </p>
+        </div>
+    </section>
+
+    <main class="board" id="board"></main>
+
+    <div class="backdrop" id="suggest-backdrop" hidden>
+        <div
+            class="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="suggest-heading"
+        >
+            <h2 id="suggest-heading">Suggested prerequisites</h2>
+            <p class="dialog-intro" id="suggest-intro"></p>
+            <div id="suggest-list"></div>
+
+            <div class="dialog-actions">
+                <button
+                    id="suggest-skip"
+                    class="ghost"
+                    type="button"
+                >
+                    Skip
+                </button>
+
+                <button
+                    id="suggest-accept"
+                    type="button"
+                >
+                    Add selected
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
