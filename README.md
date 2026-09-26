@@ -12,7 +12,7 @@ A dependency means:
 
 The application keeps the task schedule, blocking state, dependency graph, rollback behavior, and critical-path information consistent after changes.
 
-Built for a hackathon by **Lakshay Agarwal**.
+Built for a hackathon by **Lakshay Kumar Agarwal**.
 
 ---
 
