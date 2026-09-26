@@ -493,3 +493,5 @@ These files are recreated locally when needed and are not part of the submission
 **Lakshay Kumar Agarwal**
 
 TaskFlow Pro was developed as a hackathon project demonstrating dependency-aware project scheduling, graph-based task management, automated validation, and AI-assisted prerequisite suggestions with a deterministic fallback.
+
+<img width="3546" height="7113" alt="diagram (2)" src="https://github.com/user-attachments/assets/f2751c6f-77b3-407f-8d68-2c42397da7c0" />
